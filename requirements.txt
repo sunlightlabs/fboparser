@@ -1,0 +1,13 @@
+BeautifulSoup==3.2.1
+Django==1.5
+MySQL-python==1.2.4
+Pygments==1.6
+beautifulsoup4==4.1.3
+html5lib==0.95
+ipython==0.13.1
+lxml==3.1.0
+## FIXME: could not find svn URL in dependency_links for this package:
+pyreadline==1.7.1.dev-r0
+readline==6.2.4.1
+-e git://github.com/kennethreitz/requests.git@13de69299f9026bb0be5333e8a4c78a07f2558e9#egg=requests-1.1.0-py2.7-dev
+wsgiref==0.1.2
