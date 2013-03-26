@@ -43,10 +43,22 @@ def generate_characters(fobj):
             else:
                 yield chr
 
-class Tag(list):
-    def __init__(self, text):
+class Token(list):
+    def __init__(self, text, begin, end):
         self.text = text
+        self.begin_offset = begin
+        self.end_offset = end
 
+class Text(Token):
+    def __str__(self):
+        return 'Text[{b}:{e}]:{t!r}'.format(b=self.begin_offset,
+                                          e=self.end_offset,
+                                          t=self.text)
+
+    def __repr__(self):
+        return '<{0}>'.format(str(self))
+
+class Tag(Token):
     @property
     def closing_tag(self):
         return self.text[1] == '/'
@@ -62,7 +74,10 @@ class Tag(list):
         return id(self)
 
     def __str__(self):
-        return 'Tag:{0} ({1} children)'.format(self.name, len(self))
+        return 'Tag[{b}:{e}]:{t} ({n} children)'.format(b=self.begin_offset,
+                                                        e=self.end_offset,
+                                                        t=self.name,
+                                                        n=len(self))
 
     def __repr__(self):
         return '<{0}>'.format(str(self))
@@ -70,19 +85,26 @@ class Tag(list):
 def form_tags(chars):
     window = deque()
 
-    for chr in chars:
+    # Using start=1 because begining offsets are calculated via subtraction
+    # and we want an inclusive ending offset.
+    for (offset, chr) in enumerate(chars, start=1):
         window.append(chr)
         if chr == '>':
             window_chars = "".join(window)
             for tag in ALL_TAGS:
                 if window_chars.endswith(tag):
                     if len(window_chars) > len(tag):
-                        yield window_chars[:-len(tag)]
-                    yield Tag(window_chars[-len(tag):])
+                        prefix_text = window_chars[:-len(tag)]
+                        yield Text(prefix_text,
+                                   offset - len(window_chars),
+                                   offset - len(tag))
+                    tag_text = window_chars[-len(tag):]
+                    yield Tag(tag_text, offset - len(tag_text), offset)
                     window = deque()
 
     if len(window) > 0:
-        yield "".join(window)
+        remaining_text = "".join(window)
+        yield Text(remaining_text, offset - len(remaining_text), offset)
 
 def lex_stream(fobj):
     return form_tags(generate_characters(fobj))

@@ -20,8 +20,23 @@ BROKEN_TAGS =  ['DATE', 'YEAR', 'AGENCY', 'ZIP', 'CLASSCOD', 'NAICS',
                 'AWARDEE', 'AWARDEE_DUNS', 'MODNBR', 'DONBR', 'FOJA',
                 'OFFICE', 'LOCATION', 'STAUTH', 'URL']
 
-TOP_LEVEL_TAGS = ['PRESOL', 'COMBINE', 'AWARD', 'JA', 'FAIROPP', 'MOD',
-                  'ARCHIVE', 'UNARCHIVE', 'AMDCSS']
+TOP_LEVEL_TAGS = [
+    'PRESOL',
+    'COMBINE',
+    'AMDCSS',
+    'MOD',
+    'AWARD',
+    'JA',
+    'ITB',
+    'FAIROPP',
+    'SRCSGT',
+    'SNOTE',
+    'SSALE',
+    'EPSUPLOAD',
+    'DELETE',
+    'ARCHIVE',
+    'UNARCHIVE'
+]
 
 STRUCTURAL_NESTED_TAGS = {
     'EMAIL': ['ADDRESS', 'DESC'],
@@ -70,11 +85,31 @@ class Elem(object):
         self.text = text
         self.children = []
         self.closes = None
+        self.begin_offset = None
+        self.end_offset = None
+
+    def pprint(self, indent=2, level=0, file=sys.stdout):
+        if self.text is None:
+            print("{i}{nm}".format(i=" " * (indent *level),
+                                   nm=self.name),
+                  file=file)
+        else:
+            print("{i}{nm} => {txt!r}".format(i=" " * (indent * level),
+                                            nm=self.name,
+                                            txt=self.text),
+                  file=file)
+        for child in self.children:
+            child.pprint(indent=indent, level=level+1, file=file)
+
+    def __str__(self):
+        return "<{}>".format(self.name)
+
+    def __repr__(self):
+        return "<Elem({})>".format(self.name)
 
 def parse_file(path, encoding):
     elements = generate_elements(lex_stream(open(path, 'r', encoding=encoding)))
     top_level_elems = parse_top_level(elements)
-    return list(top_level_elems)
     feed = []
     for elem in top_level_elems:
         elem.children = parse_second_level(elem.children)
@@ -96,8 +131,10 @@ def generate_elements(tokens):
     def _elem_from_window():
         nonlocal window, elem_stack
         tag0 = window.popleft()
-        txt = "".join(window).strip()
+        txt = "".join([tag.text for tag in window]).strip()
         elem = Elem(tag0.name, txt if len(txt) > 0 else None)
+        elem.begin_offset = tag0.begin_offset
+        elem.end_offset = window[-1].end_offset if len(window) > 0 else tag0.end_offset
         elem_stack.appendleft(elem)
         window = deque()
         return elem
@@ -110,6 +147,8 @@ def generate_elements(tokens):
                 
                 closing_elem = Elem(token.name, None)
                 closing_elem.closes = _find_opening_elem(closing_elem)
+                closing_elem.begin_offset = token.begin_offset
+                closing_elem.end_offset = token.end_offset
                 yield closing_elem
 
             else:
@@ -134,6 +173,7 @@ def parse_top_level(elements):
                 yield window.popleft()
             top_level = window.popleft()
             top_level.children.extend(window)
+            top_level.end_offset = elem.end_offset
             window = deque()
             yield top_level
 
@@ -169,8 +209,12 @@ class ElemEncoder(json.JSONEncoder):
             return {
                 'element': o.name,
                 'text': o.text,
-                'children': o.children
+                'children': o.children,
+                'begin': o.begin_offset,
+                'end': o.end_offset
             }
+        elif isinstance(o, deque):
+            return list(o)
         return super(ElemEncoder, self).default(o)
 
 if __name__ == "__main__":
