@@ -44,10 +44,12 @@ def generate_characters(fobj):
                 yield chr
 
 class Token(list):
-    def __init__(self, text, begin, end):
+    def __init__(self, text, begin, end, begin_line, end_line):
         self.text = text
         self.begin_offset = begin
         self.end_offset = end
+        self.begin_line = begin_line
+        self.end_line = end_line
 
 class Text(Token):
     def __str__(self):
@@ -84,12 +86,16 @@ class Tag(Token):
 
 def form_tags(chars):
     window = deque()
+    begin_line = 1
+    end_line = 1
 
     # Using start=1 because begining offsets are calculated via subtraction
     # and we want an inclusive ending offset.
     for (offset, chr) in enumerate(chars, start=1):
         window.append(chr)
-        if chr == '>':
+        if chr in ['\r', '\n'] and (len(window) < 2 or window[-2] not in ['\r', '\n'] or window[-2] == chr):
+            end_line += 1
+        elif chr == '>':
             window_chars = "".join(window)
             for tag in ALL_TAGS:
                 if window_chars.endswith(tag):
@@ -97,14 +103,17 @@ def form_tags(chars):
                         prefix_text = window_chars[:-len(tag)]
                         yield Text(prefix_text,
                                    offset - len(window_chars),
-                                   offset - len(tag))
+                                   offset - len(tag),
+                                   begin_line,
+                                   end_line)
                     tag_text = window_chars[-len(tag):]
-                    yield Tag(tag_text, offset - len(tag_text), offset)
+                    yield Tag(tag_text, offset - len(tag_text), offset, begin_line, end_line)
                     window = deque()
+                    begin_line = end_line
 
     if len(window) > 0:
         remaining_text = "".join(window)
-        yield Text(remaining_text, offset - len(remaining_text), offset)
+        yield Text(remaining_text, offset - len(remaining_text), offset, begin_line, end_line)
 
 def lex_stream(fobj):
     return form_tags(generate_characters(fobj))

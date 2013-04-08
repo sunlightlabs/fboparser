@@ -10,7 +10,7 @@ from xml.etree import ElementTree as etree
 
 import yaml
 
-from lexer import Tag, lex_stream
+from fbo_raw.lexer import Tag, lex_stream
 
 BROKEN_TAGS =  ['DATE', 'YEAR', 'AGENCY', 'ZIP', 'CLASSCOD', 'NAICS',
                 'OFFADD', 'SUBJECT', 'SOLNBR', 'RESPDATE', 'ARCHDATE',
@@ -30,6 +30,7 @@ TOP_LEVEL_TAGS = [
     'ITB',
     'FAIROPP',
     'SRCSGT',
+    'FSTD',
     'SNOTE',
     'SSALE',
     'EPSUPLOAD',
@@ -41,6 +42,7 @@ TOP_LEVEL_TAGS = [
 STRUCTURAL_NESTED_TAGS = {
     'EMAIL': ['ADDRESS', 'DESC'],
     'LINK': ['URL', 'DESC'],
+    'DESC': TOP_LEVEL_TAGS
     #'FILELIST': ['FILE'],
     #'FILE': ['URL', 'MIMETYPE', 'DESC']
 }
@@ -87,6 +89,8 @@ class Elem(object):
         self.closes = None
         self.begin_offset = None
         self.end_offset = None
+        self.begin_line = None
+        self.end_line = None
 
     def pprint(self, indent=2, level=0, file=sys.stdout):
         if self.text is None:
@@ -110,11 +114,7 @@ class Elem(object):
 def parse_file(path, encoding):
     elements = generate_elements(lex_stream(open(path, 'r', encoding=encoding)))
     top_level_elems = parse_top_level(elements)
-    feed = []
-    for elem in top_level_elems:
-        elem.children = parse_second_level(elem.children)
-        feed.append(elem)
-    return feed
+    return top_level_elems
 
 def generate_elements(tokens):
     elem_stack = deque()
@@ -134,7 +134,13 @@ def generate_elements(tokens):
         txt = "".join([tag.text for tag in window]).strip()
         elem = Elem(tag0.name, txt if len(txt) > 0 else None)
         elem.begin_offset = tag0.begin_offset
-        elem.end_offset = window[-1].end_offset if len(window) > 0 else tag0.end_offset
+        elem.begin_line = tag0.begin_line
+        if len(window) > 0:
+            elem.end_offset = window[-1].end_offset
+            elem.end_line = window[-1].end_line
+        else:
+            elem.end_offset = tag0.end_offset
+            elem.end_line = tag0.end_line
         elem_stack.appendleft(elem)
         window = deque()
         return elem
@@ -147,9 +153,15 @@ def generate_elements(tokens):
                 
                 closing_elem = Elem(token.name, None)
                 closing_elem.closes = _find_opening_elem(closing_elem)
-                closing_elem.begin_offset = token.begin_offset
-                closing_elem.end_offset = token.end_offset
-                yield closing_elem
+                if closing_elem.closes is not None:
+                    # If the tag is a closing tag, but we can't find the
+                    # opening tag, it must be a straggler due to invalid
+                    # syntax. TODO: Should we log a warning?
+                    closing_elem.begin_offset = token.begin_offset
+                    closing_elem.end_offset = token.end_offset
+                    closing_elem.begin_line = token.begin_line
+                    closing_elem.end_line = token.end_line
+                    yield closing_elem
 
             else:
                 if len(window) > 0:
@@ -169,39 +181,67 @@ def parse_top_level(elements):
                              and elem.closes is not None
                              and elem.name in TOP_LEVEL_TAGS)
         if closing_top_level:
-            while len(window) > 0 and elem.name != window[0].name:
-                yield window.popleft()
-            top_level = window.popleft()
-            top_level.children.extend(window)
-            top_level.end_offset = elem.end_offset
-            window = deque()
-            yield top_level
+            if len(window) == 0:
+                raise Exception("Closing element found but the element window is empty: {0} on line {1}".format(elem, elem.end_line))
+
+            elif elem.closes == window[0]:
+                # This is the normal case, where a closing element clears
+                # the current window
+                head = window.popleft()
+                head.children = parse_structure(head, window)
+                head.end_offset = elem.end_offset
+                window = deque()
+                yield head
+
+            else:
+                window.append(elem)
 
         elif isinstance(elem, Elem):
-            window.append(elem)
+            if len(window) == 0 and elem.name not in TOP_LEVEL_TAGS:
+                elem.pprint(file=sys.stderr)
+                print("Discarded orphaned non-top-level element: {0} on line {1}".format(elem, elem.begin_line), file=sys.stderr)
+            else:
+                window.append(elem)
+
+        else:
+            raise Exception("Exptecting Elem, got {}".format(elem))
 
     for elem in window:
         yield elem
 
-def parse_second_level(elements):
-    second_level_elem = None
-    reordered = deque()
-    for elem in elements:
-        if elem.closes is not None:
-            if second_level_elem is not None and elem.name == second_level_elem.name:
-                second_level_elem = None
-        elif elem.name in STRUCTURAL_NESTED_TAGS:
-            second_level_elem = elem
-            reordered.append(elem)
-        elif second_level_elem is not None:
-            if elem.name not in STRUCTURAL_NESTED_TAGS[second_level_elem.name]:
-                second_level_elem = None
-                reordered.append(elem)
+def parse_structure(parent, elements):
+    ast = []
+   
+    try:
+        while True:
+            elem = elements.popleft()
+
+            if elem.closes is not None:
+                return ast
+
+            elif parent.name in STRUCTURAL_NESTED_TAGS and elem.name not in STRUCTURAL_NESTED_TAGS[parent.name]:
+                elements.appendleft(elem)
+                return ast
+
+            elif elem.name in STRUCTURAL_NESTED_TAGS or elem.name in TOP_LEVEL_TAGS:
+                elem.children = parse_structure(elem, elements)
+                ast.append(elem)
+
+            elif parent.name in STRUCTURAL_NESTED_TAGS and elem.name in STRUCTURAL_NESTED_TAGS[parent.name]:
+                ast.append(elem)
+
+            elif parent.name in TOP_LEVEL_TAGS:
+                ast.append(elem)
+
             else:
-                second_level_elem.children.append(elem)
-        else:
-            reordered.append(elem)
-    return reordered
+                elements.appendleft(elem)
+                return ast
+
+    except IndexError:
+        return ast
+
+    except KeyError:
+        import ipdb; ipdb.set_trace()
 
 class ElemEncoder(json.JSONEncoder):
     def default(self, o):
@@ -220,5 +260,10 @@ class ElemEncoder(json.JSONEncoder):
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         feed = list(parse_file(sys.argv[1], encoding='iso8859_2'))
-        json.dump(feed, cls=ElemEncoder, fp=sys.stdout, indent=2)
+        if len(sys.argv) > 2 and sys.argv[-1] == 'ast':
+            for elem in feed:
+                elem.pprint()
+        else:
+            json.dump(feed, cls=ElemEncoder, fp=sys.stdout, indent=2)
+
 
