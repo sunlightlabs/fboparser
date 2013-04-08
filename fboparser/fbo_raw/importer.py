@@ -10,8 +10,8 @@ attribute tags are ignored because they don't seem to be used.
 
 import sys
 
-from noticefreq import print_notice_freq
-from parser import parse_file
+from fbo_raw.noticefreq import print_notice_freq
+from fbo_raw.parser import parse_file
 
 class NoSuchElement(Exception):
     def __init__(self, name, *args, **kwargs):
@@ -55,13 +55,48 @@ class ErrorCollector(object):
             return None
    
     def pprint(self, file=sys.stderr):
-        print("Failed to validate {sub} because:".format(sub=self.subject),
+        print("Failed to validate {sub} from lines {begin}-{end} because:".format(
+                  sub=self.subject,
+                  begin=self.subject.begin_line,
+                  end=self.subject.end_line),
               file=file)
         for error in self.errors:
             print("    {e}".format(e=error), file=file)
 
     def __iter__(self):
         return iter(self.errors)
+
+    def __add__(self, other):
+        result = errors()
+        result.errors.extend(self.errors)
+        result.errors.extend(other.errors)
+        return result
+
+    def __iadd__(self, other):
+        self.errors.extend(other.errors)
+        return self
+
+def validate_link_and_email(notice):
+    errors = ErrorCollector(subject=notice)
+
+    link = errors.check(zero_or_one, 'LINK')
+    if link:
+        link_url = errors.check(zero_or_one, 'URL', subject=link)
+        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
+
+
+    # Drop empty EMAIL children
+    # EMAIL elements are commonly abused in the FBO data
+    notice.children = [e for e in notice.children
+                       if e.name != 'EMAIL'
+                       or len(e.children) > 0]
+
+    email = errors.check(zero_or_one, 'EMAIL')
+    if email:
+        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
+        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+
+    return errors
 
 def validate_presol_notice(presol):
     errors = ErrorCollector(subject=presol)
@@ -78,14 +113,7 @@ def validate_presol_notice(presol):
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     contact = errors.check(one_and_only_one, 'CONTACT')
     desc = errors.check(zero_or_one, 'DESC')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(presol)
     setaside = errors.check(zero_or_one, 'SETASIDE')
     popaddress = errors.check(zero_or_one, 'POPADDRESS')
     popzip = errors.check(zero_or_one, 'POPZIP')
@@ -108,14 +136,7 @@ def validate_combine_amdcss_mod_notice(combine):
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     contact = errors.check(one_and_only_one, 'CONTACT')
     desc = errors.check(zero_or_one, 'DESC')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(combine)
     setaside = errors.check(zero_or_one, 'SETASIDE')
     popaddress = errors.check(zero_or_one, 'POPADDRESS')
     popzip = errors.check(zero_or_one, 'POPZIP')
@@ -145,14 +166,7 @@ def validate_award_notice(award):
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     awardee = errors.check(one_and_only_one, 'AWARDEE')
     awardee_duns = errors.check(zero_or_one, 'AWARDEE_DUNS')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(award)
     setaside = errors.check(zero_or_one, 'SETASIDE')
     correction = errors.check(zero_or_one, 'CORRECTION')
 
@@ -175,14 +189,7 @@ def validate_ja_notice(ja):
     modnbr = errors.check(zero_or_one, 'MODNBR')
     awddate = errors.check(one_and_only_one, 'AWDDATE')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(ja)
     correction = errors.check(zero_or_one, 'CORRECTION')
     return errors
 
@@ -202,14 +209,7 @@ def validate_itb_notice(itb):
     awdnbr = errors.check(zero_or_one, 'AWDNBR')
     donnbr = errors.check(zero_or_one, 'DONNBR')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(itb)
     correction = errors.check(zero_or_one, 'CORRECTION')
     return errors
 
@@ -232,14 +232,7 @@ def validate_fairopp_notice(fairopp):
     modnbr = errors.check(zero_or_one, 'MODNBR')
     awddate = errors.check(one_and_only_one, 'AWDDATE')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(fairopp)
     correction = errors.check(zero_or_one, 'CORRECTION')
     return errors
 
@@ -257,14 +250,7 @@ def validate_srcsgt_notice(srcsgt):
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     contact = errors.check(one_and_only_one, 'CONTACT')
     desc = errors.check(zero_or_one, 'DESC')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(srcsgt)
     setaside = errors.check(zero_or_one, 'SETASIDE')
     popaddress = errors.check(zero_or_one, 'POPADDRESS')
     popzip = errors.check(zero_or_one, 'POPZIP')
@@ -284,14 +270,7 @@ def validate_fstd_notice(fstd):
     desc = errors.check(zero_or_one, 'DESC')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     contact = errors.check(zero_or_one, 'CONTACT')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(fstd)
     return errors
 
 def validate_snote_notice(snote):
@@ -307,14 +286,7 @@ def validate_snote_notice(snote):
     desc = errors.check(zero_or_one, 'DESC')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     contact = errors.check(zero_or_one, 'CONTACT')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(snote)
     return errors
 
 def validate_ssale_notice(ssale):
@@ -330,14 +302,7 @@ def validate_ssale_notice(ssale):
     contact = errors.check(one_and_only_one, 'CONTACT')
     desc = errors.check(zero_or_one, 'DESC')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
-    link = errors.check(zero_or_one, 'LINK')
-    if link:
-        link_url = errors.check(zero_or_one, 'URL', subject=link)
-        link_desc = errors.check(zero_or_one, 'DESC', subject=link)
-    email = errors.check(zero_or_one, 'EMAIL')
-    if email:
-        email_address = errors.check(zero_or_one, 'ADDRESS', subject=email)
-        email_desc = errors.check(zero_or_one, 'DESC', subject=email)
+    errors += validate_link_and_email(ssale)
     return errors
 
 def validate_archive_notice(archive):
