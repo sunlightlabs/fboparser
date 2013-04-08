@@ -5,7 +5,7 @@ import sys
 
 from collections import Counter
 
-from parser import parse_file
+from fbo_raw.parser import parse_file
 
 def print_notice_freq(notices, file=sys.stdout):
     notice_ctr = Counter()
