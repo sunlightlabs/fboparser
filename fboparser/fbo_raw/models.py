@@ -15,66 +15,68 @@ JUSTIFICATION_CHOICES = (
     (2, 'Only One Source (Except Brand Name)'),
     (3, 'Follow-on Delivery Order Following Competitive Initial Order'),
     (4, 'Minimum Guarantee'),
-    (5, 'Other Statutory Authority')
+    (5, 'Other Statutory Authority'),
 )
 
 
-class GenericNode(models.model):
+class GenericNode(models.Model):
 
-    sol_number = models.CharField(max_length=128, null=False)
-    date = models.DateField()
-    naics = models.IntegerField(max_length=6)
-    description = models.TextField()
-    class_code = models.CharField(max_length=20)
-    subject = models.CharField(max_length=128)
-    zip_code = models.CharField(max_length=10)
-    setaside = models.CharField(max_length=128)
-    contact = models.TextField()
-    link = models.URLField()
-    email = models.EmailField()
-    office_address = models.CharField()
-    archive_date = models.DateField()
-    correction = models.BooleanField()
+    date = models.DateField(null=True, blank=True)
+    naics = models.IntegerField(max_length=6,null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    class_code = models.CharField(max_length=20, null=True, blank=True)
+    subject = models.TextField(null=True, blank=True)
+    zip_code = models.CharField(max_length=10, null=True, blank=True)
+    setaside = models.CharField(max_length=128, null=True, blank=True)
+    contact = models.TextField(null=True, blank=True)
+    link = models.URLField(null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+    office_address = models.CharField(null=True, blank=True, max_length=255)
+    archive_date = models.DateField(null=True, blank=True)
+    correction = models.NullBooleanField(null=True, blank=True)
 
     class Meta:
         abstract = True
 
 class Solicitation(GenericNode):
-    response_date = models.DateField()
-    pop_address = models.CharField(max_length=255)
-    pop_zip = models.CharField(max_length=10)
-    pop_country = models.CharField(max_length=25)
-    recovery_act = models.BooleanField(default=False)
-    solicitation_type = models.CharField(choices=SOLICITATION_CHOICES)
+    sol_number = models.CharField(max_length=128)
+    response_date = models.DateField(null=True, blank=True)
+    pop_address = models.CharField(max_length=255, null=True, blank=True)
+    pop_zip = models.CharField(max_length=10, null=True, blank=True)
+    pop_country = models.CharField(max_length=25, null=True, blank=True)
+    recovery_act = models.NullBooleanField(default=False, null=True, blank=True)
+    solicitation_type = models.CharField(choices=SOLICITATION_CHOICES, max_length=20)
 
 class Award(GenericNode):
-    base_notice_type = models.CharField(choices=SOLICITATION_CHOICES)
+    base_notice_type = models.CharField(choices=SOLICITATION_CHOICES, max_length=20)
+    sol_number = models.CharField(max_length=128, null=True, blank=True )
     award_number = models.CharField(max_length=255)
-    award_amount = models.DecimalField()
+    award_amount = models.DecimalField(decimal_places=2, max_digits=20)
     award_date = models.DateField()
-    line_number = models.IntegerField()
+    line_number = models.CharField(max_length=255, null=True, blank=True)
     awardee = models.TextField()
     
 class Justification(Award):
-    statutory_authority = models.CharField(max_length=255)
-    modification_number = models.CharField(max_length=255)
+    statutory_authority = models.CharField(max_length=255, null=True, blank=True)
+    modification_number = models.CharField(max_length=255, null=True, blank=True)
 
 class FairOpportunity(GenericNode):
-    base_notice_type = models.CharField(choices=SOLICITATION_CHOICES)
+    sol_number = models.CharField(max_length=128, null=True, blank=True)
     #Fair Opportunity/Limited Sources Justification Authority
     foja = models.IntegerField(choices=JUSTIFICATION_CHOICES)
     award_number = models.CharField(max_length=255)
     #award date of order
-    award_date = models.DateField()
+    award_date = models.DateField(null=True, blank=True)
     #Delivery/Task Order Number
-    order_number = models.CharFIeld(max_length=255)
-    modification_number = models.CharField(max_length=255)
+    order_number = models.CharField(max_length=255, null=True, blank=True)
+    modification_number = models.CharField(max_length=255, null=True, blank=True)
 
 #Intent To Bundle Notices, DOD only
 class ITB(GenericNode):
-    base_notice_type = models.CharField(choices=SOLICITATION_CHOICES)
+    sol_number = models.CharField(max_length=128, null=True, blank=True)
+    base_notice_type = models.CharField(choices=SOLICITATION_CHOICES, max_length=20)
     award_number = models.CharField(max_length=255)
     #Delivery/Task Order Number
-    order_number = models.CharFIeld(max_length=255)
+    order_number = models.CharField(max_length=255, null=True, blank=True)
 
 
