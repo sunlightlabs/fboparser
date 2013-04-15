@@ -9,9 +9,12 @@ attribute tags are ignored because they don't seem to be used.
 """
 
 import sys
+import datetime 
+import re
 
 from fbo_raw.noticefreq import print_notice_freq
 from fbo_raw.parser import parse_file
+from fbo_raw.models import Solicitation, Award, Justification, FairOpportunity, ITB
 
 class NoSuchElement(Exception):
     def __init__(self, name, *args, **kwargs):
@@ -37,6 +40,15 @@ def zero_or_one(notice, elname):
         return one_and_only_one(notice, elname)
     except NoSuchElement:
         return None
+
+def value_zero_or_one(notice, name):
+    x = zero_or_one(notice, name)
+    if x:
+        return x.text
+    else:
+        return None
+
+
 
 class ErrorCollector(object):
     def __init__(self, subject):
@@ -100,97 +112,18 @@ def validate_link_and_email(notice):
 
 def validate_presol_notice(presol):
     errors = ErrorCollector(subject=presol)
-
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    classcod = errors.check(one_and_only_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
     solnbr = errors.check(one_and_only_one, 'SOLNBR')
-    respdate = errors.check(zero_or_one, 'RESPDATE')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    contact = errors.check(one_and_only_one, 'CONTACT')
-    desc = errors.check(zero_or_one, 'DESC')
-    errors += validate_link_and_email(presol)
-    setaside = errors.check(zero_or_one, 'SETASIDE')
-    popaddress = errors.check(zero_or_one, 'POPADDRESS')
-    popzip = errors.check(zero_or_one, 'POPZIP')
-    popcountry = errors.check(zero_or_one, 'POPCOUNTRY')
 
     return errors
-
-def validate_combine_amdcss_mod_notice(combine):
-    errors = ErrorCollector(subject=combine)
-
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    classcod = errors.check(one_and_only_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    solnbr = errors.check(one_and_only_one, 'SOLNBR')
-    respdate = errors.check(zero_or_one, 'RESPDATE')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    contact = errors.check(one_and_only_one, 'CONTACT')
-    desc = errors.check(zero_or_one, 'DESC')
-    errors += validate_link_and_email(combine)
-    setaside = errors.check(zero_or_one, 'SETASIDE')
-    popaddress = errors.check(zero_or_one, 'POPADDRESS')
-    popzip = errors.check(zero_or_one, 'POPZIP')
-    popcountry = errors.check(zero_or_one, 'POPCOUNTRY')
-
-    return errors
-
 
 def validate_award_notice(award):
     errors = ErrorCollector(subject=award)
 
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(zero_or_one, 'ZIP')
-    classcod = errors.check(one_and_only_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    solnbr = errors.check(zero_or_one, 'SOLNBR')
-    ntype = errors.check(zero_or_one, 'NTYPE')
-    desc = errors.check(zero_or_one, 'DESC')
-    contact = errors.check(one_and_only_one, 'CONTACT')
     awdnbr = errors.check(one_and_only_one, 'AWDNBR')
     awdamt = errors.check(one_and_only_one, 'AWDAMT')
-    linenbr = errors.check(zero_or_one, 'LINENBR')
-    awddate = errors.check(one_and_only_one, 'AWDDATE')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
     awardee = errors.check(one_and_only_one, 'AWARDEE')
-    awardee_duns = errors.check(zero_or_one, 'AWARDEE_DUNS')
-    errors += validate_link_and_email(award)
-    setaside = errors.check(zero_or_one, 'SETASIDE')
-    correction = errors.check(zero_or_one, 'CORRECTION')
-
-    return errors
-
-def validate_ja_notice(ja):
-    errors = ErrorCollector(subject=ja)
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(zero_or_one, 'ZIP')
-    classcod = errors.check(one_and_only_one, 'CLASSCOD')
-    naics = errors.check(one_and_only_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    ntype = errors.check(zero_or_one, 'NTYPE')
-    desc = errors.check(zero_or_one, 'DESC')
-    contact = errors.check(one_and_only_one, 'CONTACT')
-    stauth = errors.check(one_and_only_one, 'STAUTH')
-    awdnbr = errors.check(one_and_only_one, 'AWDNBR')
-    modnbr = errors.check(zero_or_one, 'MODNBR')
     awddate = errors.check(one_and_only_one, 'AWDDATE')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    errors += validate_link_and_email(ja)
-    correction = errors.check(zero_or_one, 'CORRECTION')
+
     return errors
 
 def validate_itb_notice(itb):
@@ -236,74 +169,7 @@ def validate_fairopp_notice(fairopp):
     correction = errors.check(zero_or_one, 'CORRECTION')
     return errors
 
-def validate_srcsgt_notice(srcsgt):
-    errors = ErrorCollector(subject=srcsgt)
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    classcod = errors.check(one_and_only_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    solnbr = errors.check(one_and_only_one, 'SOLNBR')
-    respdate = errors.check(zero_or_one, 'RESPDATE')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    contact = errors.check(one_and_only_one, 'CONTACT')
-    desc = errors.check(zero_or_one, 'DESC')
-    errors += validate_link_and_email(srcsgt)
-    setaside = errors.check(zero_or_one, 'SETASIDE')
-    popaddress = errors.check(zero_or_one, 'POPADDRESS')
-    popzip = errors.check(zero_or_one, 'POPZIP')
-    popcountry = errors.check(zero_or_one, 'POPCOUNTRY')
-    return errors
 
-def validate_fstd_notice(fstd):
-    errors = ErrorCollector(subject=fstd)
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    solnbr = errors.check(zero_or_one, 'SOLNBR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    classcod = errors.check(zero_or_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    desc = errors.check(zero_or_one, 'DESC')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    contact = errors.check(zero_or_one, 'CONTACT')
-    errors += validate_link_and_email(fstd)
-    return errors
-
-def validate_snote_notice(snote):
-    errors = ErrorCollector(subject=snote)
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    solnbr = errors.check(zero_or_one, 'SOLNBR')
-    classcod = errors.check(zero_or_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    desc = errors.check(zero_or_one, 'DESC')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    contact = errors.check(zero_or_one, 'CONTACT')
-    errors += validate_link_and_email(snote)
-    return errors
-
-def validate_ssale_notice(ssale):
-    errors = ErrorCollector(subject=ssale)
-    date = errors.check(one_and_only_one, 'DATE')
-    year = errors.check(one_and_only_one, 'YEAR')
-    solnbr = errors.check(zero_or_one, 'SOLNBR')
-    zip = errors.check(one_and_only_one, 'ZIP')
-    classcod = errors.check(zero_or_one, 'CLASSCOD')
-    naics = errors.check(zero_or_one, 'NAICS')
-    offadd = errors.check(zero_or_one, 'OFFADD')
-    subject = errors.check(one_and_only_one, 'SUBJECT')
-    contact = errors.check(one_and_only_one, 'CONTACT')
-    desc = errors.check(zero_or_one, 'DESC')
-    archdate = errors.check(zero_or_one, 'ARCHDATE')
-    errors += validate_link_and_email(ssale)
-    return errors
 
 def validate_archive_notice(archive):
     errors = ErrorCollector(subject=archive)
@@ -321,6 +187,35 @@ def validate_unarchive_notice(unarchive):
     awdnbr = errors.check(zero_or_one, 'AWDNBR')
     archdate = errors.check(zero_or_one, 'ARCHDATE')
     return errors
+ 
+def parse_money(notice, name):
+    money_text = zero_or_one(notice, name)
+    if money_text:
+        money_text = money_text.text.replace('$', '').replace(',', '')
+        print(money_text)
+        money = re.findall('(\d+[\.*\d]*)', money_text)
+        for (i, m) in enumerate(money):
+            m = re.sub('[.]\d{2}$', '', m)
+            m = m.replace('.', '')
+            money[i] = m
+        print(money)
+        return money
+    else:
+        return 0
+
+def create_date(notice, name):
+    try:
+        year = int('20' + one_and_only_one(notice, 'YEAR').text)
+        date = zero_or_one(notice, name).text
+        if len(date) == 4:
+            dateobj = datetime.date(year, int(date[:2]), int(date[2:]))
+        elif len(date) == 8:
+            dateobj = datetime.date(int(date[4:]), int(date[:2]), int(date[2:4]))
+        else:
+            dateobj = datetime.date(int('20' + date[4:]), int(date[:2]), int(date[2:4]))
+        return dateobj
+    except AttributeError:
+        return None
 
 def import_file(path, encoding):
     text = ""
@@ -328,72 +223,151 @@ def import_file(path, encoding):
         text = fil.read()
     feed = parse_file(path, encoding)
     validated = []
+    splits = []
     for notice in feed:
         try:
             errors = None
 
-            if notice.name == 'PRESOL':
+            if notice.name == 'PRESOL' or notice.name == 'COMBINE' or notice.name == 'SRCSGT' or notice.name == 'SSALE' or notice.name == 'SNOTE' or notice.name == 'FSTD':
                 errors = validate_presol_notice(notice)
-
-            elif notice.name == 'COMBINE':
-                errors = validate_combine_amdcss_mod_notice(notice)
-
-            elif notice.name == 'AMDCSS':
-                errors = validate_combine_amdcss_mod_notice(notice)
-
-            elif notice.name == 'MOD':
-                errors = validate_combine_amdcss_mod_notice(notice)
+                if errors.none:
+                    sol_nbr = one_and_only_one(notice, 'SOLNBR').text
+                    sol_type = notice.name
+                    s, created = Solicitation.objects.get_or_create(sol_number=sol_nbr, solicitation_type=sol_type)
+                    
+                    #non required parts
+                    s.date = create_date(notice, 'DATE')
+                    s.naics = value_zero_or_one(notice, 'NAICS')
+                    s.description = value_zero_or_one(notice, 'DESCRIPTION')
+                    s.class_code = value_zero_or_one(notice, 'CLASSCOD')
+                    s.subject = value_zero_or_one(notice, 'SUBJECT')
+                    s.zip_code = value_zero_or_one(notice, 'ZIP')
+                    s.setaside = value_zero_or_one(notice, 'SETASIDE')
+                    s.contact = value_zero_or_one(notice, 'CONTACT')
+                    s.link = value_zero_or_one(notice, 'LINK')
+                    s.email = value_zero_or_one(notice, 'EMAIL')
+                    s.office_address = value_zero_or_one(notice, 'OFFADD')
+                    s.archive_date = create_date(notice, 'ARCHDATE')
+                    s.correction = value_zero_or_one(notice, 'CORRECTION')
+                    s.response_date = create_date(notice, 'RESPDATE')
+                    s.pop_address = value_zero_or_one(notice, 'POPADDRESS')
+                    s.pop_zip = value_zero_or_one(notice, 'POPZIP')
+                    s.pop_country = value_zero_or_one(notice, 'POPCOUNTRY')
+               #     s.recovery_act = zero_or_one(notice, 'SETASIDE')
+                    s.save()
+                    validated.append(s)
 
             elif notice.name == 'AWARD':
                 errors = validate_award_notice(notice)
+                if errors.none:
+                    awd_nbr = one_and_only_one(notice, 'AWDNBR').text
+                    print(awd_nbr)
+                    awd_amt = parse_money(notice, 'AWDAMT')
+                    if len(awd_amt) > 1 or len(awd_amt) == 0:
+                        #potential split award
+                        splits.append(awd_nbr)
+                        continue
+                    else:
+                        awd_amt = awd_amt[0]
 
+                    awardee = one_and_only_one(notice, 'AWARDEE').text
+                    awd_date = create_date(notice, 'AWDDATE')
+                    award, created = Award.objects.get_or_create(award_number=awd_nbr.replace('-', ''), award_amount=awd_amt, award_date=awd_date, awardee=awardee)
+
+                    award.class_code = value_zero_or_one(notice, 'CLASSCOD')
+                    award.naics = value_zero_or_one(notice, 'NAICS')
+                    award.subject = value_zero_or_one(notice, 'SUBJECT')
+                    award.description = value_zero_or_one(notice, 'DESCRIPTION')
+                    award.link = value_zero_or_one(notice, 'LINK')
+                    award.email = value_zero_or_one(notice, 'EMAIL')
+                    award.office_address = value_zero_or_one(notice, 'OFFADD')
+                    award.archive_date = create_date(notice, 'ARCHDATE')
+                    award.correction = value_zero_or_one(notice, 'CORRECTION')
+                    award.sol_number = value_zero_or_one(notice, 'SOLNBR')
+                    award.line_number = value_zero_or_one(notice, 'LINENBR')
+                    award.contact = one_and_only_one(notice, 'CONTACT').text
+                    award.save() 
+                    validated.append(award)
+                else:
+                    print("Could not import award")
             elif notice.name == 'JA':
-                # TODO: Have not tested validating a JA against real data yet
-                errors = validate_ja_notice(notice)
+                errors = validate_award_notice(notice)
+                if errors.none:
+                    j_nbr = one_and_only_one(notice, 'AWDNBR').text
+                    print(j_nbr)
+                    j_amt = parse_money(notice, 'AWDAMT')
+                    if len(j_amt) > 1 or len(j_amt) == 0:
+                        splits.append(j_nbr)
+                        continue
+                    else:
+                        j_amt = j_amt[0]
 
-            elif notice.name == 'ITB':
+                    awardee = one_and_only_one(notice, 'AWARDEE').text
+                    awd_date = create_date(notice, 'AWDDATE')
+                    ja, created = Justification.objects.get_or_create(award_number=j_nbr.replace('-', ''), award_amount=j_amt, award_date=awd_date, awardee=awardee)
+
+                    ja.naics = value_zero_or_one(notice, 'NAICS')
+                    ja.description = value_zero_or_one(notice, 'DESCRIPTION')
+                    ja.subject = value_zero_or_one(notice, 'SUBJECT')
+                    ja.link = value_zero_or_one(notice, 'LINK')
+                    ja.email = value_zero_or_one(notice, 'EMAIL')
+                    ja.office_address = value_zero_or_one(notice, 'OFFADD')
+                    ja.archive_date = create_date(notice, 'ARCHDATE')
+                    ja.sol_number = value_zero_or_one(notice, 'SOLNBR')
+                    ja.correction = value_zero_or_one(notice, 'CORRECTION')
+                    ja.statutory_authority = one_and_only_one(notice, 'STAUTH').text
+                    ja.modification_number = one_and_only_one(notice, 'MODNBR').text
+                    ja.contact = one_and_only_one(notice, 'CONTACT').text
+                    ja.save() 
+
+                    validated.append(ja)
+
+#            elif notice.name == 'ITB':
                 # TODO: Have not tested validating a ITB against real data yet
-                errors = validate_itb_notice(notice)
+#                errors = validate_itb_notice(notice)
 
-            elif notice.name == 'FAIROPP':
-                errors = validate_fairopp_notice(notice)
+#            elif notice.name == 'FAIROPP':
+#                errors = validate_fairopp_notice(notice)
 
-            elif notice.name == 'SRCSGT':
-                errors = validate_srcsgt_notice(notice)
+#            elif notice.name == 'SRCSGT':
+#                errors = validate_srcsgt_notice(notice)
 
-            elif notice.name == 'FSTD':
-                errors = validate_fstd_notice(notice)
+#            elif notice.name == 'FSTD':
+#                errors = validate_fstd_notice(notice)
 
-            elif notice.name == 'SNOTE':
-                errors = validate_snote_notice(notice)
+#            elif notice.name == 'SNOTE':
+#                errors = validate_snote_notice(notice)
 
-            elif notice.name == 'SSALE':
-                errors = validate_ssale_notice(notice)
+#            elif notice.name == 'SSALE':
+#                errors = validate_ssale_notice(notice)
 
-            elif notice.name == 'ARCHIVE':
-                errors = validate_archive_notice(notice)
+#            elif notice.name == 'ARCHIVE':
+#                errors = validate_archive_notice(notice)
 
-            elif notice.name == 'UNARCHIVE':
-                errors = validate_unarchive_notice(notice)
+#            elif notice.name == 'UNARCHIVE':
+#                errors = validate_unarchive_notice(notice)
 
-            if errors is None:
-                print("Warning: Unrecognized notice: {}".format(notice.name))
-            elif errors.none:
-                validated.append(notice)
-            else:
-                print("\033[1;31m", file=sys.stderr)
-                errors.pprint()
-                print("\033[0;33m", file=sys.stderr)
-                notice.pprint(file=sys.stderr)
-                print("\033[0;31m", file=sys.stderr)
-                print(text[notice.begin_offset:notice.end_offset], file=sys.stderr)
-                print("\033[0;0m", file=sys.stderr)
+#            if errors is None:
+#                print("Warning: Unrecognized notice: {}".format(notice.name))
+#            elif errors.none:
+#                validated.append(notice)
+#            else:
+#                print("\033[1;31m", file=sys.stderr)
+#                errors.pprint()
+#                print("\033[0;33m", file=sys.stderr)
+#                notice.pprint(file=sys.stderr)
+#                print("\033[0;31m", file=sys.stderr)
+#                print(text[notice.begin_offset:notice.end_offset], file=sys.stderr)
+#                print("\033[0;0m", file=sys.stderr)
 
         except (NoSuchElement, MultipleElementsFound) as e:
             print("BUG: the importer failed to catch a vaidation error: {}".format(e), file=sys.stderr)
 
-    print("Frequency of validated notices:")
-    print_notice_freq(validated) 
+   # print("Frequency of validated notices:")
+   # print_notice_freq(validated)
+    print("Possible split awards")
+    for s in splits:
+        print(s) 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
