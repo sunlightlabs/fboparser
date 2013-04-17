@@ -81,12 +81,13 @@ class PushBackIterator(object):
         return obj
 
 class Elem(object):
-    def __init__(self, name, text, *args, **kwargs):
+    def __init__(self, token, name, text, *args, **kwargs):
         super(Elem, self).__init__(*args, **kwargs)
         self.name = name
         self.text = text
         self.children = []
         self.closes = None
+        self.token = token
         self.begin_offset = None
         self.end_offset = None
         self.begin_line = None
@@ -121,6 +122,13 @@ def generate_elements(tokens):
     window = deque()
 
     def _find_opening_elem(closing):
+        # TODO: This is broken because a spurious closing tag
+        # will clear the stack, even if it occurs inside
+        # another element that is paired with a legitimate 
+        # closing tag. This can be seen in FBOFeed20090506.
+        # The spurious </EMAIL> on 3823 clears the stack,
+        # which makes the </PRESOL> on line 3825 match no
+        # opening tag.
         nonlocal elem_stack
         while len(elem_stack) > 0:
             candidate = elem_stack.popleft()
@@ -132,7 +140,7 @@ def generate_elements(tokens):
         nonlocal window, elem_stack
         tag0 = window.popleft()
         txt = "".join([tag.text for tag in window]).strip()
-        elem = Elem(tag0.name, txt if len(txt) > 0 else None)
+        elem = Elem(tag0, tag0.name, txt if len(txt) > 0 else None)
         elem.begin_offset = tag0.begin_offset
         elem.begin_line = tag0.begin_line
         if len(window) > 0:
@@ -151,7 +159,7 @@ def generate_elements(tokens):
                 if len(window) > 0:
                     yield _elem_from_window()
                 
-                closing_elem = Elem(token.name, None)
+                closing_elem = Elem(token, token.name, None)
                 closing_elem.closes = _find_opening_elem(closing_elem)
                 if closing_elem.closes is not None:
                     # If the tag is a closing tag, but we can't find the
