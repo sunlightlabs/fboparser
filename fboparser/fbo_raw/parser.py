@@ -119,14 +119,22 @@ def parse_file(path, encoding):
 def generate_elements(tokens):
     elem_stack = deque()
     window = deque()
-
+    
     def _find_opening_elem(closing):
+        #iterate through without popping to find opening element, if found then pop, if not return none
         nonlocal elem_stack
-        while len(elem_stack) > 0:
-            candidate = elem_stack.popleft()
+        pop = False
+        for e in elem_stack:
             if candidate.name == closing.name:
-                return candidate
-        return None
+                pop = True
+                break
+        if pop:
+            while len(elem_stack) > 0:
+                candidate = elem_stack.popleft()
+                if candidate.name == closing.name:
+                    return candidate
+        else:
+            return None
 
     def _elem_from_window():
         nonlocal window, elem_stack
@@ -150,7 +158,6 @@ def generate_elements(tokens):
             if token.closing_tag:
                 if len(window) > 0:
                     yield _elem_from_window()
-                
                 closing_elem = Elem(token.name, None)
                 closing_elem.closes = _find_opening_elem(closing_elem)
                 if closing_elem.closes is not None:
@@ -183,7 +190,7 @@ def parse_top_level(elements):
         if closing_top_level:
             if len(window) == 0:
                 raise Exception("Closing element found but the element window is empty: {0} on line {1}".format(elem, elem.end_line))
-
+            
             elif elem.closes == window[0]:
                 # This is the normal case, where a closing element clears
                 # the current window
@@ -204,14 +211,14 @@ def parse_top_level(elements):
                 window.append(elem)
 
         else:
-            raise Exception("Exptecting Elem, got {}".format(elem))
+            raise Exception("Expecting Elem, got {}".format(elem))
 
     for elem in window:
         yield elem
 
 def parse_structure(parent, elements):
     ast = []
-   
+
     try:
         while True:
             elem = elements.popleft()
@@ -238,6 +245,7 @@ def parse_structure(parent, elements):
                 return ast
 
     except IndexError:
+        print('index error')
         return ast
 
     except KeyError:

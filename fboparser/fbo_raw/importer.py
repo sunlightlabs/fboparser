@@ -279,7 +279,7 @@ def import_file(path, encoding):
                     award.subject = value_zero_or_one(notice, 'SUBJECT')
                     award.description = value_zero_or_one(notice, 'DESCRIPTION')
                     award.link = value_zero_or_one(notice, 'LINK')
-                    award.email = value_zero_or_one(notice, 'EMAIL')
+                 #   award.email = value_zero_or_one(notice, 'EMAIL')
                     award.office_address = value_zero_or_one(notice, 'OFFADD')
                     award.archive_date = create_date(notice, 'ARCHDATE')
                     award.correction = value_zero_or_one(notice, 'CORRECTION')
@@ -288,8 +288,11 @@ def import_file(path, encoding):
                     award.contact = one_and_only_one(notice, 'CONTACT').text
                     award.save() 
                     validated.append(award)
+                    print('appended!')
                 else:
                     print("Could not import award")
+                    print(notice.children)
+                    print(notice.text)
             elif notice.name == 'JA':
                 errors = validate_award_notice(notice)
                 if errors.none:
