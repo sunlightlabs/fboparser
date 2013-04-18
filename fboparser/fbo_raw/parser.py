@@ -120,21 +120,22 @@ def parse_file(path, encoding):
 def generate_elements(tokens):
     elem_stack = deque()
     window = deque()
-
+    
     def _find_opening_elem(closing):
-        # TODO: This is broken because a spurious closing tag
-        # will clear the stack, even if it occurs inside
-        # another element that is paired with a legitimate 
-        # closing tag. This can be seen in FBOFeed20090506.
-        # The spurious </EMAIL> on 3823 clears the stack,
-        # which makes the </PRESOL> on line 3825 match no
-        # opening tag.
+        #iterate through without popping to find opening element, if found then pop, if not return none
         nonlocal elem_stack
-        while len(elem_stack) > 0:
-            candidate = elem_stack.popleft()
-            if candidate.name == closing.name:
-                return candidate
-        return None
+        pop = False
+        for e in elem_stack:
+            if e.name == closing.name:
+                pop = True
+                break
+        if pop:
+            while len(elem_stack) > 0:
+                candidate = elem_stack.popleft()
+                if candidate.name == closing.name:
+                    return candidate
+        else:
+            return None
 
     def _elem_from_window():
         nonlocal window, elem_stack
@@ -191,7 +192,7 @@ def parse_top_level(elements):
         if closing_top_level:
             if len(window) == 0:
                 raise Exception("Closing element found but the element window is empty: {0} on line {1}".format(elem, elem.end_line))
-
+            
             elif elem.closes == window[0]:
                 # This is the normal case, where a closing element clears
                 # the current window
@@ -212,14 +213,14 @@ def parse_top_level(elements):
                 window.append(elem)
 
         else:
-            raise Exception("Exptecting Elem, got {}".format(elem))
+            raise Exception("Expecting Elem, got {}".format(elem))
 
     for elem in window:
         yield elem
 
 def parse_structure(parent, elements):
     ast = []
-   
+
     try:
         while True:
             elem = elements.popleft()
