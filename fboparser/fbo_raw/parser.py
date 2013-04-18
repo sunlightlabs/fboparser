@@ -81,12 +81,13 @@ class PushBackIterator(object):
         return obj
 
 class Elem(object):
-    def __init__(self, name, text, *args, **kwargs):
+    def __init__(self, token, name, text, *args, **kwargs):
         super(Elem, self).__init__(*args, **kwargs)
         self.name = name
         self.text = text
         self.children = []
         self.closes = None
+        self.token = token
         self.begin_offset = None
         self.end_offset = None
         self.begin_line = None
@@ -125,7 +126,7 @@ def generate_elements(tokens):
         nonlocal elem_stack
         pop = False
         for e in elem_stack:
-            if candidate.name == closing.name:
+            if e.name == closing.name:
                 pop = True
                 break
         if pop:
@@ -140,7 +141,7 @@ def generate_elements(tokens):
         nonlocal window, elem_stack
         tag0 = window.popleft()
         txt = "".join([tag.text for tag in window]).strip()
-        elem = Elem(tag0.name, txt if len(txt) > 0 else None)
+        elem = Elem(tag0, tag0.name, txt if len(txt) > 0 else None)
         elem.begin_offset = tag0.begin_offset
         elem.begin_line = tag0.begin_line
         if len(window) > 0:
@@ -158,7 +159,8 @@ def generate_elements(tokens):
             if token.closing_tag:
                 if len(window) > 0:
                     yield _elem_from_window()
-                closing_elem = Elem(token.name, None)
+                
+                closing_elem = Elem(token, token.name, None)
                 closing_elem.closes = _find_opening_elem(closing_elem)
                 if closing_elem.closes is not None:
                     # If the tag is a closing tag, but we can't find the
@@ -245,7 +247,6 @@ def parse_structure(parent, elements):
                 return ast
 
     except IndexError:
-        print('index error')
         return ast
 
     except KeyError:
