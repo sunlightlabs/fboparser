@@ -10,7 +10,7 @@ from xml.etree import ElementTree as etree
 
 import yaml
 
-from fbo_raw.lexer import Tag, lex_stream
+from fboparser.fbo_raw.util.lexer import Tag, lex_stream
 
 BROKEN_TAGS =  ['DATE', 'YEAR', 'AGENCY', 'ZIP', 'CLASSCOD', 'NAICS',
                 'OFFADD', 'SUBJECT', 'SOLNBR', 'RESPDATE', 'ARCHDATE',

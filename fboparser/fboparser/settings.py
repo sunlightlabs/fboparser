@@ -1,5 +1,7 @@
 # Django settings for fboparser project.
+import os.path
 
+PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__))
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -120,6 +122,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'fboparser.fbo_raw',
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
@@ -155,8 +158,12 @@ LOGGING = {
     }
 }
 
+
+RAW_PATH =  PROJECT_ROOT + '/fbo_raw/raw_files/'
+
+
 try:
-    from local_settings import *
+    from fboparser.local_settings import *
 except:
     pass
 

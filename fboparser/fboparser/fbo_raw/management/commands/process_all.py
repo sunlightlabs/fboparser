@@ -1,14 +1,13 @@
 from django.core.management.base import CommandError, BaseCommand
 from django.conf import settings
 import os
-from fboparser.fbo_raw.importer import import_file
+from fboparser.fbo_raw.util.importer import import_file
 
 class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
 
-        PATHNAME =  settings.PROJECT_ROOT + '/raw_files/'
-        print(PATHNAME)
+        PATHNAME = settings.RAW_PATH
 
         for f in os.listdir(PATHNAME):
             if os.path.isfile(PATHNAME + f):

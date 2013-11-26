@@ -1,2 +1,7 @@
 *.pyc
 local_settings.py
+*FBOFeed*
+*FBORecoveryAwards*
+*FBORecovery*
+*FBOFull*
+

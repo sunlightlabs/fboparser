@@ -13,8 +13,8 @@ import datetime
 import re
 import json
 from dateutil.parser import parse
-from fboparser.fbo_raw.noticefreq import print_notice_freq
-from fboparser.fbo_raw.parser import parse_file, ElemEncoder
+from fboparser.fbo_raw.util.noticefreq import print_notice_freq
+from fboparser.fbo_raw.util.parser import parse_file, ElemEncoder
 from fboparser.fbo_raw.models import Solicitation, Award, Justification, FairOpportunity, ITB, JUSTIFICATION_CHOICES
 
 STATS = {'awards': 0, 'solicitations': 0, 'justifications': 0, 'itb': 0, }
